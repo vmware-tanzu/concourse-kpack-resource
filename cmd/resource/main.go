@@ -27,7 +27,12 @@ func main() {
 type concourseResource struct{}
 
 func (concourseResource) Check(ofcourseSource ofcourse.Source, version ofcourse.Version, env ofcourse.Environment, logger *ofcourse.Logger) ([]ofcourse.Version, error) {
-	clientSet, err := k8s.Authenticate(ofcourseSource)
+	k8sSource, err := k8s.NewSource(logger, ofcourseSource)
+	if err != nil {
+		return nil, err
+	}
+
+	clientSet, err := k8s.Authenticate(k8sSource)
 	if err != nil {
 		return nil, err
 	}

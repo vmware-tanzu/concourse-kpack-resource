@@ -11,22 +11,21 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-
-	"github.com/pivotal/kpack/pkg/client/clientset/versioned"
 )
 
-func pksLogin(api, cluster, username, password string, insecure bool) (*versioned.Clientset, error) {
+func pksSetup(source *PKSSource) (*rest.Config, error) {
 	data := url.Values{
 		"client_id":     []string{"pks_cluster_client"},
 		"client_secret": []string{""},
 		"grant_type":    []string{"password"},
-		"username":      []string{username},
-		"password":      []string{password},
+		"username":      []string{source.Username},
+		"password":      []string{source.Password},
 	}.Encode()
 
-	req, err := http.NewRequest(http.MethodPost, api+"/oauth/token", strings.NewReader(data))
+	req, err := http.NewRequest(http.MethodPost, source.Api+"/oauth/token", strings.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +58,7 @@ func pksLogin(api, cluster, username, password string, insecure bool) (*versione
 		return nil, err
 	}
 
-	config, err := clientcmd.NewDefaultClientConfig(clientcmdapi.Config{}, &clientcmd.ConfigOverrides{
+	return clientcmd.NewDefaultClientConfig(clientcmdapi.Config{}, &clientcmd.ConfigOverrides{
 		AuthInfo: clientcmdapi.AuthInfo{
 			AuthProvider: &clientcmdapi.AuthProviderConfig{
 				Name: "oidc",
@@ -67,19 +66,14 @@ func pksLogin(api, cluster, username, password string, insecure bool) (*versione
 					"client-id":             "pks_cluster_client",
 					"cluster_client_secret": "",
 					"id-token":              token.IdToken,
-					"idp-issuer-url":        api + "/oauth/token",
+					"idp-issuer-url":        source.Api + "/oauth/token",
 					"refresh-token":         token.RefreshToken,
 				},
 			},
 		},
 		ClusterInfo: clientcmdapi.Cluster{
-			Server:                "https://" + cluster + ":8443",
-			InsecureSkipTLSVerify: insecure,
+			Server:                "https://" + source.Cluster + ":8443",
+			InsecureSkipTLSVerify: source.Insecure,
 		},
 	}).ClientConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	return versioned.NewForConfig(config)
 }
