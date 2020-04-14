@@ -41,16 +41,14 @@ func filterBuilds(items []v1alpha1.Build, version oc.Version) ([]v1alpha1.Build,
 		return items[i].CreationTimestamp.Before(&items[j].CreationTimestamp)
 	})
 
-	index := indexOfPreviousBuild(items, version)
-
-	return items[index:], nil
+	return items[indexOfPreviousBuild(items, version)+1:], nil
 }
 
 func indexOfPreviousBuild(items []v1alpha1.Build, version oc.Version) int {
 	for i, build := range items {
 		if build.Status.LatestImage != "" && build.Status.LatestImage == version["image"] {
-			return i + 1
+			return i
 		}
 	}
-	return 0
+	return -1
 }
