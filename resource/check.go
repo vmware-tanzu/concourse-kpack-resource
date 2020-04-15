@@ -19,10 +19,9 @@ func Check(clientset versioned.Interface, source Source, version oc.Version, env
 		return nil, err
 	}
 
-	builds, err := filterBuilds(buildList.Items, version)
-	if err != nil {
-		return nil, err
-	}
+	builds := filterBuilds(buildList.Items)
+	index, _ := indexOfBuild(builds, version)
+	builds = builds[index+1:]
 
 	var versions []oc.Version
 	for _, build := range builds {
@@ -36,19 +35,19 @@ func Check(clientset versioned.Interface, source Source, version oc.Version, env
 	return versions, nil
 }
 
-func filterBuilds(items []v1alpha1.Build, version oc.Version) ([]v1alpha1.Build, error) {
+func filterBuilds(items []v1alpha1.Build) []v1alpha1.Build {
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].CreationTimestamp.Before(&items[j].CreationTimestamp)
 	})
-
-	return items[indexOfPreviousBuild(items, version)+1:], nil
+	return items
 }
 
-func indexOfPreviousBuild(items []v1alpha1.Build, version oc.Version) int {
-	for i, build := range items {
+func indexOfBuild(items []v1alpha1.Build, version oc.Version) (int, bool) {
+	for i := len(items) - 1; i >= 0; i-- {
+		build := items[i]
 		if build.Status.LatestImage != "" && build.Status.LatestImage == version["image"] {
-			return i
+			return i, true
 		}
 	}
-	return -1
+	return -1, false
 }

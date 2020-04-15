@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	clientgotesting "k8s.io/client-go/testing"
 
 	"github.com/pivotal/concourse-kpack-resource/resource"
 	"github.com/pivotal/concourse-kpack-resource/resource/testhelpers"
@@ -284,8 +283,6 @@ type CheckTest struct {
 	Version oc.Version
 
 	ExpectedOutput  string
-	ExpectUpdates   []clientgotesting.UpdateActionImpl
-	ExpectCreates   []runtime.Object
 	ExpectedVersion []oc.Version
 }
 
@@ -298,8 +295,6 @@ func (b CheckTest) test(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, b.ExpectedVersion, versions)
-
-	testhelpers.TestUpdatesAndCreates(t, client, b.ExpectUpdates, b.ExpectCreates)
 
 	if b.ExpectedOutput != "" {
 		assert.Equal(t, b.ExpectedOutput, testLog.Out.String())

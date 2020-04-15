@@ -27,8 +27,8 @@ func main() {
 
 type concourseResource struct{}
 
-func (concourseResource) Check(ofcourseSource ofcourse.Source, version ofcourse.Version, env ofcourse.Environment, logger *ofcourse.Logger) ([]ofcourse.Version, error) {
-	k8sSource, err := k8s.NewSource(ofcourseSource)
+func (concourseResource) Check(ocSource ofcourse.Source, version ofcourse.Version, env ofcourse.Environment, logger *ofcourse.Logger) ([]ofcourse.Version, error) {
+	k8sSource, err := k8s.NewSource(ocSource)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (concourseResource) Check(ofcourseSource ofcourse.Source, version ofcourse.
 		return nil, err
 	}
 
-	source, err := resource.NewSource(ofcourseSource)
+	source, err := resource.NewSource(ocSource)
 	if err != nil {
 		return nil, err
 	}
@@ -46,9 +46,25 @@ func (concourseResource) Check(ofcourseSource ofcourse.Source, version ofcourse.
 	return resource.Check(clientSet, source, version, env, logger)
 }
 
-func (concourseResource) In(outputDirectory string, source ofcourse.Source, params ofcourse.Params, version ofcourse.Version, env ofcourse.Environment, logger *ofcourse.Logger) (ofcourse.Version, ofcourse.Metadata, error) {
+func (concourseResource) In(outDir string, ocSource ofcourse.Source, params ofcourse.Params, version ofcourse.Version, env ofcourse.Environment, logger *ofcourse.Logger) (ofcourse.Version, ofcourse.Metadata, error) {
+	k8sSource, err := k8s.NewSource(ocSource)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	return version, nil, nil
+	clientSet, _, err := k8s.Authenticate(k8sSource)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	source, err := resource.NewSource(ocSource)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return (&resource.In{
+		Clientset: clientSet,
+	}).In(outDir, source, params, version, env, logger)
 }
 
 func (concourseResource) Out(inDir string, ofcourseSource ofcourse.Source, params ofcourse.Params, env ofcourse.Environment, logger *ofcourse.Logger) (ofcourse.Version, ofcourse.Metadata, error) {
