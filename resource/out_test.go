@@ -88,6 +88,7 @@ func testOut(t *testing.T, when spec.G, it spec.S) {
 						LatestImage:    "some.reg.io/image@sha256:1234567",
 					},
 				},
+				ExpectedOutput: "updating image 'test' in namespace 'test-namespace' from revision 'oldrevision' to new revision 'new-commit'\nWaiting on kpack to process update...\n",
 				ExpectUpdates: []clientgotesting.UpdateActionImpl{
 					{
 						Object: updatedImage,
@@ -95,16 +96,6 @@ func testOut(t *testing.T, when spec.G, it spec.S) {
 				},
 				ExpectedVersion: oc.Version{
 					"image": "some.reg.io/image@sha256:1234567",
-				},
-				ExpectedMetadata: oc.Metadata{
-					oc.NameVal{
-						Name:  "build",
-						Value: "some-build-name",
-					},
-					oc.NameVal{
-						Name:  "commit",
-						Value: commit, //todo actually fetch this from the last build
-					},
 				},
 				ExpectedImageToWaitOn: updatedImage,
 			}.test(t)

@@ -38,28 +38,19 @@ func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment
 		return nil, nil, errors.Errorf("image '%s' is not configured to use a git source", image.Name)
 	}
 
+	log.Infof("updating image '%s' in namespace '%s' from revision '%s' to new revision '%s'", image.Name, image.Namespace, image.Spec.Source.Git.Revision, commit)
+
 	image.Spec.Source.Git.Revision = commit
 	image, err = o.Clientset.BuildV1alpha1().Images(src.Namespace).Update(image)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	log.Infof("Waiting on kpack to process update...")
 	image, err = o.ImageWaiter.Wait(context.Background(), image)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return oc.Version{
-			"image": image.Status.LatestImage,
-		},
-		oc.Metadata{
-			oc.NameVal{
-				Name:  "build",
-				Value: image.Status.LatestBuildRef,
-			},
-			oc.NameVal{
-				Name:  "commit",
-				Value: commit,
-			},
-		}, nil
+	return oc.Version{"image": image.Status.LatestImage}, nil, nil
 }
