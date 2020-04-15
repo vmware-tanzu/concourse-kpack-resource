@@ -1,10 +1,7 @@
 docker_registry = gcr.io/cf-build-service-public/concourse-kpack-resource
 
-pack:
-	pack build $(docker_registry) --builder cloudfoundry/cnb:bionic
-
-docker: pack
-	docker build -t $(docker_registry) --build-arg "base_image=${docker_registry}" hack
+docker:
+	docker build -t $(docker_registry) .
 
 publish: docker
 	docker push $(docker_registry)

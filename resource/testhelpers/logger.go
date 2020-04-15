@@ -10,17 +10,17 @@ type Logger struct {
 }
 
 func (l *Logger) Errorf(message string, args ...interface{}) {
-	l.Out.WriteString(fmt.Sprintf(message, args) + "\n")
+	l.Out.WriteString(fmt.Sprintf(message, args...) + "\n")
 }
 
 func (l *Logger) Warnf(message string, args ...interface{}) {
-	l.Out.WriteString(fmt.Sprintf(message, args) + "\n")
+	l.Out.WriteString(fmt.Sprintf(message, args...) + "\n")
 }
 
 func (l *Logger) Infof(message string, args ...interface{}) {
-	l.Out.WriteString(fmt.Sprintf(message, args) + "\n")
+	l.Out.WriteString(fmt.Sprintf(message, args...) + "\n")
 }
 
 func (l *Logger) Debugf(message string, args ...interface{}) {
-	l.Out.WriteString(fmt.Sprintf(message, args) + "\n")
+	l.Out.WriteString(fmt.Sprintf(message, args...) + "\n")
 }

@@ -5,13 +5,11 @@ import (
 	oc "github.com/cloudboss/ofcourse/ofcourse"
 )
 
-func NewSource(logger *oc.Logger, ocSource oc.Source) (Source, error) {
+func NewSource(ocSource oc.Source) (Source, error) {
 	marshal, err := json.Marshal(ocSource)
 	if err != nil {
 		return Source{}, err
 	}
-
-	logger.Infof(string(marshal))
 
 	source := Source{}
 	err = json.Unmarshal(marshal, &source)

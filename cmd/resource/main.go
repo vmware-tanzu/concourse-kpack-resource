@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/cloudboss/ofcourse/ofcourse"
+	"github.com/pivotal/kpack/pkg/logs"
 
 	"github.com/pivotal/concourse-kpack-resource/k8s"
 	"github.com/pivotal/concourse-kpack-resource/resource"
@@ -27,12 +28,12 @@ func main() {
 type concourseResource struct{}
 
 func (concourseResource) Check(ofcourseSource ofcourse.Source, version ofcourse.Version, env ofcourse.Environment, logger *ofcourse.Logger) ([]ofcourse.Version, error) {
-	k8sSource, err := k8s.NewSource(logger, ofcourseSource)
+	k8sSource, err := k8s.NewSource(ofcourseSource)
 	if err != nil {
 		return nil, err
 	}
 
-	clientSet, err := k8s.Authenticate(k8sSource)
+	clientSet, _, err := k8s.Authenticate(k8sSource)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +51,29 @@ func (concourseResource) In(outputDirectory string, source ofcourse.Source, para
 	return version, nil, nil
 }
 
-func (concourseResource) Out(inputDirectory string, source ofcourse.Source, params ofcourse.Params, env ofcourse.Environment, logger *ofcourse.Logger) (ofcourse.Version, ofcourse.Metadata, error) {
+func (concourseResource) Out(inDir string, ofcourseSource ofcourse.Source, params ofcourse.Params, env ofcourse.Environment, logger *ofcourse.Logger) (ofcourse.Version, ofcourse.Metadata, error) {
+	k8sSource, err := k8s.NewSource(ofcourseSource)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	return nil, nil, nil
+	clientSet, k8sClient, err := k8s.Authenticate(k8sSource)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	source, err := resource.NewSource(ofcourseSource)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	outParams, err := resource.NewOutParams(params)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return (&resource.Out{
+		Clientset:   clientSet,
+		ImageWaiter: resource.DelayedImageWaiter{resource.NewImageWaiter(clientSet, logs.NewBuildLogsClient(k8sClient))},
+	}).Out(inDir, source, outParams, env, logger)
 }

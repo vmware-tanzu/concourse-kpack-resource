@@ -2,18 +2,25 @@ package k8s
 
 import (
 	"errors"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	"github.com/pivotal/kpack/pkg/client/clientset/versioned"
 )
 
-func Authenticate(source Source) (*versioned.Clientset, error) {
+func Authenticate(source Source) (versioned.Interface, kubernetes.Interface, error) {
 	client, err := restConfig(source)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return versioned.NewForConfig(client)
+	k8sClient, err := kubernetes.NewForConfig(client)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	kpackClient, err := versioned.NewForConfig(client)
+	return kpackClient, k8sClient, err
 }
 
 func restConfig(source Source) (*rest.Config, error) {
