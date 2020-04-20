@@ -2,7 +2,6 @@ package resource
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -11,7 +10,8 @@ import (
 	corev1alpha1 "github.com/pivotal/kpack/pkg/apis/core/v1alpha1"
 	"github.com/pivotal/kpack/pkg/client/clientset/versioned"
 	"github.com/pkg/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
+	watchTools "k8s.io/client-go/tools/watch"
 )
 
 type imageWaiter struct {
@@ -28,35 +28,55 @@ func NewImageWaiter(kpackClient versioned.Interface, logTailer ImageLogTailer) *
 }
 
 func (w *imageWaiter) Wait(ctx context.Context, image *v1alpha1.Image) (*v1alpha1.Image, error) {
-	watch, err := w.KpackClient.BuildV1alpha1().Images(image.Namespace).Watch(v1.ListOptions{
-		FieldSelector: fmt.Sprintf("metadata.name=%s", image.Name),
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer watch.Stop()
-
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	var nextBuild = int(image.Status.BuildCounter) + 1
 	go w.logTailer.Tail(ctx, os.Stderr, image.Name, strconv.Itoa(nextBuild), image.Namespace)
 
-	for event := range watch.ResultChan() {
-		image, ok := event.Object.(*v1alpha1.Image)
-		if !ok {
-			return nil, errors.New("unexpected object received")
-		}
-
-		if image.Status.ObservedGeneration == image.Generation {
-			if image.Status.GetCondition(corev1alpha1.ConditionReady).IsTrue() {
-				return image, nil
-			}
-
-			if image.Status.GetCondition(corev1alpha1.ConditionReady).IsFalse() {
-				return nil, errors.Errorf("update to image %s failed", image.Name)
-			}
-		}
+	if done, _ := imageInTerminalState(watch.Event{Object: image}); done {
+		return image, nil
 	}
-	return nil, errors.New("error waiting for image update to apply")
+
+	event, err := watchTools.Until(ctx,
+		image.ResourceVersion,
+		w.KpackClient.BuildV1alpha1().Images(image.Namespace),
+		filterErrors(imageInTerminalState))
+	if err != nil {
+		return nil, err
+	}
+
+	image, ok := event.Object.(*v1alpha1.Image)
+	if !ok {
+		return nil, errors.New("unexpected object received")
+	}
+
+	if image.Status.GetCondition(corev1alpha1.ConditionReady).IsFalse() {
+		return nil, errors.Errorf("update to image %s failed", image.Name)
+	}
+
+	return image, nil
+}
+
+func imageInTerminalState(event watch.Event) (bool, error) {
+	image, ok := event.Object.(*v1alpha1.Image)
+	if !ok {
+		return false, errors.New("unexpected object received")
+	}
+
+	if image.Status.ObservedGeneration != image.Generation {
+		return false, nil
+	}
+
+	return !image.Status.GetCondition(corev1alpha1.ConditionReady).IsUnknown(), nil
+}
+
+func filterErrors(condition watchTools.ConditionFunc) watchTools.ConditionFunc {
+	return func(event watch.Event) (bool, error) {
+		if event.Type == watch.Error {
+			return false, errors.Errorf("error on watch %+v", event.Object)
+		}
+
+		return condition(event)
+	}
 }

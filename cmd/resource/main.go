@@ -89,7 +89,10 @@ func (concourseResource) Out(inDir string, ofcourseSource ofcourse.Source, param
 	}
 
 	return (&resource.Out{
-		Clientset:   clientSet,
-		ImageWaiter: resource.DelayedImageWaiter{resource.NewImageWaiter(clientSet, logs.NewBuildLogsClient(k8sClient))},
+		Clientset: clientSet,
+		ImageWaiter: resource.DelayedImageWaiter{
+			KpackClient: clientSet,
+			ImageWaiter: resource.NewImageWaiter(clientSet, logs.NewBuildLogsClient(k8sClient)),
+		},
 	}).Out(inDir, source, outParams, env, logger)
 }

@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -27,24 +29,27 @@ func TestWatch(t *testing.T) {
 
 func waitTest(t *testing.T, when spec.G, it spec.S) {
 	var (
-		clientset     = fake.NewSimpleClientset()
 		fakeLogTailer = &fakeLogTailer{}
-		imageWaiter   = NewImageWaiter(clientset, fakeLogTailer)
 
 		testWatcher = &TestWatcher{
-			stopped: false,
+			initialResourceVersion: 1,
+			stopped:                false,
+			events:                 make(chan watch.Event, 100),
 		}
 
 		nextBuild    = 11
 		imageToWatch = &v1alpha1.Image{
 			ObjectMeta: v1.ObjectMeta{
-				Name:      "some-name",
-				Namespace: "some-namespace",
+				Name:            "some-name",
+				Namespace:       "some-namespace",
+				ResourceVersion: "1",
 			},
 			Status: v1alpha1.ImageStatus{
 				BuildCounter: int64(nextBuild - 1),
 			},
 		}
+		clientset   = fake.NewSimpleClientset()
+		imageWaiter = NewImageWaiter(clientset, fakeLogTailer)
 	)
 
 	it.Before(func() {
@@ -56,13 +61,8 @@ func waitTest(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			watchAction := action.(clientgotesting.WatchAction)
-			match, found := watchAction.GetWatchRestrictions().Fields.RequiresExactMatch("metadata.name")
-			if !found {
-				t.Error("Expected watch on name")
-				return false, nil, nil
-			}
-			if match != imageToWatch.Name {
-				t.Errorf("Expected watch on name: %s", imageToWatch.Name)
+			if watchAction.GetWatchRestrictions().ResourceVersion != imageToWatch.ResourceVersion {
+				t.Error("Expected watch on resource version")
 				return false, nil, nil
 			}
 
@@ -71,17 +71,17 @@ func waitTest(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
+		assert.Eventually(t, testWatcher.isStopped, time.Second, time.Millisecond)
+
 		assert.True(t, testWatcher.stopped)
 		assert.Eventually(t, fakeLogTailer.IsDone, time.Second, time.Millisecond)
 		assert.True(t, fakeLogTailer.done)
 		assert.Equal(t, []interface{}{os.Stderr, imageToWatch.Name, strconv.Itoa(nextBuild), imageToWatch.Namespace}, fakeLogTailer.args)
+
+		close(testWatcher.events)
 	})
 
 	it("returns on image ready and tails logs", func() {
-		events := make(chan watch.Event, 2)
-		testWatcher.results = events
-		defer close(events)
-
 		readyImage := &v1alpha1.Image{
 			ObjectMeta: imageToWatch.ObjectMeta,
 			Status: v1alpha1.ImageStatus{
@@ -96,10 +96,10 @@ func waitTest(t *testing.T, when spec.G, it spec.S) {
 			},
 		}
 
-		events <- watch.Event{
+		testWatcher.addEvent(watch.Event{
 			Type:   watch.Modified,
 			Object: readyImage,
-		}
+		})
 
 		image, err := imageWaiter.Wait(context.Background(), imageToWatch)
 		assert.NoError(t, err)
@@ -112,10 +112,6 @@ func waitTest(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it("only returns when image generation matches observed generation", func() {
-		events := make(chan watch.Event, 2)
-		testWatcher.results = events
-		defer close(events)
-
 		readyImage := &v1alpha1.Image{
 			ObjectMeta: imageToWatch.ObjectMeta,
 			Status: v1alpha1.ImageStatus{
@@ -134,32 +130,26 @@ func waitTest(t *testing.T, when spec.G, it spec.S) {
 		notMatchingGeneration.Generation = 10
 		notMatchingGeneration.Status.ObservedGeneration = 9
 
-		events <- watch.Event{
+		testWatcher.addEvent(watch.Event{
 			Type:   watch.Modified,
 			Object: notMatchingGeneration,
-		}
+		})
 
 		matchingGeneration := readyImage.DeepCopy()
 		matchingGeneration.Generation = 10
 		matchingGeneration.Status.ObservedGeneration = 10
 
-		events <- watch.Event{
+		testWatcher.addEvent(watch.Event{
 			Type:   watch.Modified,
 			Object: matchingGeneration,
-		}
+		})
 
 		image, err := imageWaiter.Wait(context.Background(), imageToWatch)
 		assert.NoError(t, err)
 		assert.Equal(t, matchingGeneration, image)
-
-		assert.True(t, testWatcher.stopped)
 	})
 
 	it("returns an error if image is Ready False", func() {
-		events := make(chan watch.Event, 2)
-		testWatcher.results = events
-		defer close(events)
-
 		readyImage := &v1alpha1.Image{
 			ObjectMeta: imageToWatch.ObjectMeta,
 			Status: v1alpha1.ImageStatus{
@@ -174,22 +164,13 @@ func waitTest(t *testing.T, when spec.G, it spec.S) {
 			},
 		}
 
-		events <- watch.Event{
-			Type:   watch.Modified,
-			Object: readyImage,
-		}
+		testWatcher.addEvent(watch.Event{Type: watch.Modified, Object: readyImage})
 
 		_, err := imageWaiter.Wait(context.Background(), imageToWatch)
-		assert.Error(t, err, "update to image some-name failed")
-
-		assert.True(t, testWatcher.stopped)
+		assert.EqualError(t, err, "update to image some-name failed")
 	})
 
 	it("does not return an error if image is Ready False but has not observed generation", func() {
-		events := make(chan watch.Event, 2)
-		testWatcher.results = events
-		defer close(events)
-
 		notReadyNotObservedImage := &v1alpha1.Image{
 			ObjectMeta: v1.ObjectMeta{
 				Name:       "some-name",
@@ -208,10 +189,10 @@ func waitTest(t *testing.T, when spec.G, it spec.S) {
 				},
 			},
 		}
-		events <- watch.Event{
+		testWatcher.addEvent(watch.Event{
 			Type:   watch.Modified,
 			Object: notReadyNotObservedImage,
-		}
+		})
 
 		readyObservedImage := &v1alpha1.Image{
 			ObjectMeta: v1.ObjectMeta{
@@ -231,54 +212,40 @@ func waitTest(t *testing.T, when spec.G, it spec.S) {
 				},
 			},
 		}
-		events <- watch.Event{
+		testWatcher.addEvent(watch.Event{
 			Type:   watch.Modified,
 			Object: readyObservedImage,
-		}
+		})
 
 		image, err := imageWaiter.Wait(context.Background(), imageToWatch)
 		assert.NoError(t, err)
 		assert.Equal(t, readyObservedImage, image)
-
-		assert.True(t, testWatcher.stopped)
 	})
 
-	it("returns error if image watch closes", func() {
-		events := make(chan watch.Event, 2)
-		testWatcher.results = events
-		close(events)
+	it("returns an error on watch error", func() {
+		testWatcher.events <- watch.Event{
+			Type:   watch.Modified,
+			Object: &apierrors.NewInternalError(errors.New("this will cause an error in retry watcher")).ErrStatus,
+		}
 
 		_, err := imageWaiter.Wait(context.Background(), imageToWatch)
-		require.Errorf(t, err, "error waiting for image update to apply")
-
-		assert.True(t, testWatcher.stopped)
+		require.Error(t, err, "error on watch")
+		assert.Contains(t, err.Error(), "error on watch")
 	})
-}
-
-func setupTestWatcher(t, clientset *fake.Clientset, imageToWatch *v1alpha1.Image, events chan watch.Event) *TestWatcher {
-	testWatcher := &TestWatcher{
-		results: events,
-		stopped: false,
-	}
-
-	clientset.PrependWatchReactor("images", func(action clientgotesting.Action) (handled bool, ret watch.Interface, err error) {
-		watchAction := action.(clientgotesting.WatchAction)
-		match, found := watchAction.GetWatchRestrictions().Fields.RequiresExactMatch("metadata.name")
-		if !found {
-			return false, nil, nil
-		}
-		if match != imageToWatch.Name {
-			return false, nil, nil
-		}
-
-		return true, testWatcher, nil
-	})
-	return testWatcher
 }
 
 type TestWatcher struct {
-	stopped bool
-	results <-chan watch.Event
+	stopped                bool
+	events                 chan watch.Event
+	initialResourceVersion int
+}
+
+func (t *TestWatcher) addEvent(event watch.Event) {
+	t.initialResourceVersion++
+
+	image := event.Object.(*v1alpha1.Image)
+	image.ResourceVersion = strconv.Itoa(t.initialResourceVersion)
+	t.events <- event
 }
 
 func (t *TestWatcher) Stop() {
@@ -286,7 +253,11 @@ func (t *TestWatcher) Stop() {
 }
 
 func (t TestWatcher) ResultChan() <-chan watch.Event {
-	return t.results
+	return t.events
+}
+
+func (t *TestWatcher) isStopped() bool {
+	return t.stopped
 }
 
 type fakeLogTailer struct {
