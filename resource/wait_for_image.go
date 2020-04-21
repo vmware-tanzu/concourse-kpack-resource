@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	corev1alpha1 "github.com/pivotal/kpack/pkg/apis/core/v1alpha1"
 	"github.com/pivotal/kpack/pkg/client/clientset/versioned"
 	"github.com/pkg/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	watchTools "k8s.io/client-go/tools/watch"
 )
@@ -40,7 +42,7 @@ func (w *imageWaiter) Wait(ctx context.Context, image *v1alpha1.Image) (*v1alpha
 
 	event, err := watchTools.Until(ctx,
 		image.ResourceVersion,
-		w.KpackClient.BuildV1alpha1().Images(image.Namespace),
+		watchOnlyOneImage{kpackClient: w.KpackClient, image: image},
 		filterErrors(imageInTerminalState))
 	if err != nil {
 		return nil, err
@@ -79,4 +81,14 @@ func filterErrors(condition watchTools.ConditionFunc) watchTools.ConditionFunc {
 
 		return condition(event)
 	}
+}
+
+type watchOnlyOneImage struct {
+	kpackClient versioned.Interface
+	image       *v1alpha1.Image
+}
+
+func (w watchOnlyOneImage) Watch(options v1.ListOptions) (watch.Interface, error) {
+	options.FieldSelector = fmt.Sprintf("metadata.name=%s", w.image.Name)
+	return w.kpackClient.BuildV1alpha1().Images(w.image.Namespace).Watch(options)
 }

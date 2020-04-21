@@ -19,7 +19,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	clientgotesting "k8s.io/client-go/testing"
 )
 
@@ -57,13 +56,19 @@ func waitTest(t *testing.T, when spec.G, it spec.S) {
 			namespace := action.GetNamespace()
 			if namespace != imageToWatch.Namespace {
 				t.Error("Unexpected namespace watch")
-				return false, nil, nil
 			}
 
 			watchAction := action.(clientgotesting.WatchAction)
 			if watchAction.GetWatchRestrictions().ResourceVersion != imageToWatch.ResourceVersion {
 				t.Error("Expected watch on resource version")
-				return false, nil, nil
+			}
+
+			match, found := watchAction.GetWatchRestrictions().Fields.RequiresExactMatch("metadata.name")
+			if !found {
+				t.Error("Expected watch on name")
+			}
+			if match != imageToWatch.Name {
+				t.Errorf("Expected watch on name: %s", imageToWatch.Name)
 			}
 
 			return true, testWatcher, nil
