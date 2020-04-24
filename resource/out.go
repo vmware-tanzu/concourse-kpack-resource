@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -38,7 +39,8 @@ func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment
 		return nil, nil, errors.Errorf("image '%s' is not configured to use a git source", image.Name)
 	}
 
-	log.Infof("updating image '%s' in namespace '%s' from revision '%s' to new revision '%s'", image.Name, image.Namespace, image.Spec.Source.Git.Revision, commit)
+	log.Infof("Updating image '%s' in namespace '%s'.\nPrevious revision: %s\nNew revision: %s\n\n",
+		image.Name, image.Namespace, red(image.Spec.Source.Git.Revision), green(commit))
 
 	image.Spec.Source.Git.Revision = commit
 	image, err = o.Clientset.BuildV1alpha1().Images(src.Namespace).Update(image)
@@ -46,11 +48,25 @@ func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment
 		return nil, nil, err
 	}
 
-	log.Infof("Waiting on kpack to process update...")
+	log.Infof(purple("Waiting on kpack to process update...\n\n"))
 	image, err = o.ImageWaiter.Wait(context.Background(), image)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return oc.Version{"image": image.Status.LatestImage}, nil, nil
+}
+
+var (
+	red    = color("\033[1;31m%s\033[0m")
+	green  = color("\033[1;32m%s\033[0m")
+	purple = color("\033[1;34m%s\033[0m")
+)
+
+func color(colorString string) func(...interface{}) string {
+	sprint := func(args ...interface{}) string {
+		return fmt.Sprintf(colorString,
+			fmt.Sprint(args...))
+	}
+	return sprint
 }

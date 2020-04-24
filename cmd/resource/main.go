@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -94,5 +95,16 @@ func (concourseResource) Out(inDir string, ofcourseSource ofcourse.Source, param
 			KpackClient: clientSet,
 			ImageWaiter: resource.NewImageWaiter(clientSet, logs.NewBuildLogsClient(k8sClient)),
 		},
-	}).Out(inDir, source, outParams, env, logger)
+	}).Out(inDir, source, outParams, env, Logger{})
+}
+
+type Logger struct {
+}
+
+func (Logger) Infof(message string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, message, args...)
+}
+
+func (Logger) Debugf(message string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, message, args...)
 }

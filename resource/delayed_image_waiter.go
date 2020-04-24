@@ -22,7 +22,7 @@ type DelayedImageWaiter struct {
 }
 
 func (d DelayedImageWaiter) Wait(ctx context.Context, originalImage *v1alpha1.Image) (*v1alpha1.Image, error) {
-	time.Sleep(5 * time.Second)
+	time.Sleep(7 * time.Second)
 
 	//fetch current version of image to skip image in that falsely reported ready
 	imageAfterDelay, err := d.KpackClient.BuildV1alpha1().Images(originalImage.Namespace).Get(originalImage.Name, metav1.GetOptions{})

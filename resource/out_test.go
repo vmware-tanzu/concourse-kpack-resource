@@ -88,7 +88,12 @@ func testOut(t *testing.T, when spec.G, it spec.S) {
 						LatestImage:    "some.reg.io/image@sha256:1234567",
 					},
 				},
-				ExpectedOutput: "updating image 'test' in namespace 'test-namespace' from revision 'oldrevision' to new revision 'new-commit'\nWaiting on kpack to process update...\n",
+				ExpectedOutput: []string{
+					"Updating image 'test' in namespace 'test-namespace'",
+					"Previous revision", "oldrevision",
+					"New revision:", "new-commit",
+					"Waiting on kpack to process update...\n",
+				},
 				ExpectUpdates: []clientgotesting.UpdateActionImpl{
 					{
 						Object: updatedImage,
@@ -132,7 +137,7 @@ type OutTest struct {
 	TerminalImage *v1alpha1.Image
 	TerminalError error
 
-	ExpectedOutput        string
+	ExpectedOutput        []string
 	ExpectedImageToWaitOn *v1alpha1.Image
 	ExpectUpdates         []clientgotesting.UpdateActionImpl
 	ExpectCreates         []runtime.Object
@@ -170,8 +175,8 @@ func (b OutTest) test(t *testing.T) {
 
 	assert.Equal(t, b.ExpectedImageToWaitOn, waiter.waitedOnImage, "unexpected image was waited on")
 
-	if b.ExpectedOutput != "" {
-		assert.Equal(t, b.ExpectedOutput, testLog.Out.String())
+	for _, o := range b.ExpectedOutput {
+		assert.Contains(t, testLog.Out.String(), o)
 	}
 }
 
