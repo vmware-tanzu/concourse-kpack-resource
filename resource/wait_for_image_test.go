@@ -110,7 +110,6 @@ func waitTest(t *testing.T, when spec.G, it spec.S) {
 		assert.NoError(t, err)
 		assert.Equal(t, readyImage, image)
 
-		assert.True(t, testWatcher.stopped)
 		assert.Eventually(t, fakeLogTailer.IsDone, time.Second, time.Millisecond)
 		assert.True(t, fakeLogTailer.done)
 		assert.Equal(t, []interface{}{os.Stderr, imageToWatch.Name, strconv.Itoa(nextBuild), imageToWatch.Namespace}, fakeLogTailer.args)
