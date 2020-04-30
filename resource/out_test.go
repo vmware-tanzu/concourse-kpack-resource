@@ -126,6 +126,21 @@ func testOut(t *testing.T, when spec.G, it spec.S) {
 
 		})
 
+		it("returns error is image does not exist", func() {
+			OutTest{
+				InDir:   inDir,
+				Objects: nil,
+				Source: resource.Source{
+					Image:     "does-not-exist",
+					Namespace: "some-namespace",
+				},
+				Parameters: resource.OutParams{
+					Commitish: commitishPath,
+				},
+				ExpectError: "image 'does-not-exist' in namespace 'some-namespace' does not exist. Please create it first.",
+			}.test(t)
+
+		})
 	})
 }
 
@@ -165,7 +180,7 @@ func (b OutTest) test(t *testing.T) {
 	if b.ExpectError == "" {
 		require.NoError(t, err)
 	} else {
-		require.Error(t, err, b.ExpectError)
+		require.EqualError(t, err, b.ExpectError)
 	}
 
 	assert.Equal(t, b.ExpectedVersion, version)

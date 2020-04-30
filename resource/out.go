@@ -11,6 +11,7 @@ import (
 	"github.com/pivotal/kpack/pkg/apis/build/v1alpha1"
 	"github.com/pivotal/kpack/pkg/client/clientset/versioned"
 	"github.com/pkg/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -31,8 +32,10 @@ func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment
 	commit := strings.TrimSpace(string(fileContents))
 
 	image, err := o.Clientset.BuildV1alpha1().Images(src.Namespace).Get(src.Image, metav1.GetOptions{})
-	if err != nil {
+	if err != nil && !k8serrors.IsNotFound(err) {
 		return nil, nil, err
+	} else if k8serrors.IsNotFound(err) {
+		return nil, nil, errors.Errorf("image '%s' in namespace '%s' does not exist. Please create it first.", src.Image, src.Namespace)
 	}
 
 	if image.Spec.Source.Git == nil {
