@@ -38,11 +38,29 @@ func (in *In) In(outDir string, source Source, params oc.Params, version oc.Vers
 	build := builds[index]
 
 	return version,
-		oc.Metadata{
+		append(oc.Metadata{
 			{Name: "buildNumber", Value: build.Labels[v1alpha1.BuildNumberLabel]},
 			{Name: "buildName", Value: build.Name},
 			{Name: "buildReason", Value: build.Annotations[v1alpha1.BuildReasonAnnotation]},
+		}, sourceMetadata(build)...), nil
+}
+
+func sourceMetadata(build v1alpha1.Build) []oc.NameVal {
+	switch {
+	case build.Spec.Source.Git != nil:
+		return []oc.NameVal{
 			{Name: "gitCommit", Value: build.Spec.Source.Git.Revision},
 			{Name: "gitUrl", Value: build.Spec.Source.Git.URL},
-		}, nil
+		}
+	case build.Spec.Source.Blob != nil:
+		return []oc.NameVal{
+			{Name: "blobUrl", Value: build.Spec.Source.Blob.URL},
+		}
+	case build.Spec.Source.Registry != nil:
+		return []oc.NameVal{
+			{Name: "sourceImage", Value: build.Spec.Source.Registry.Image},
+		}
+	default:
+		return nil
+	}
 }

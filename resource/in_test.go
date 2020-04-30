@@ -27,6 +27,8 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 	const (
 		imageName = "test-image-name"
 		namespace = "test-namespace"
+
+		imageVersion = "some/image@sha256:07c5121b7bc36783614544bd4a7cd6618dc04b963d926cf6e318268cfead0530"
 	)
 
 	var (
@@ -44,9 +46,7 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 		os.RemoveAll(outDir)
 	})
 
-	it("fetches the metadata and writes the image to file", func() {
-		image := "some/image@sha256:07c5121b7bc36783614544bd4a7cd6618dc04b963d926cf6e318268cfead0530"
-
+	it("fetches git metadata and writes the image to file", func() {
 		InTest{
 			Objects: []runtime.Object{
 				&v1alpha1.Image{
@@ -77,7 +77,7 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 					Status: v1alpha1.BuildStatus{
-						LatestImage: image,
+						LatestImage: imageVersion,
 					},
 				},
 				&v1alpha1.Build{
@@ -100,11 +100,11 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 				Namespace: namespace,
 			},
 			Version: oc.Version{
-				"image": image,
+				"image": imageVersion,
 			},
 			OutDir: outDir,
 			ExpectedVersion: oc.Version{
-				"image": image,
+				"image": imageVersion,
 			},
 			ExpectedMetadata: oc.Metadata{
 				{Name: "buildNumber", Value: "1"},
@@ -115,13 +115,11 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 			},
 		}.test(t)
 
-		assertFileContents(t, filepath.Join(outDir, "image"), image)
+		assertFileContents(t, filepath.Join(outDir, "image"), imageVersion)
 
 	})
 
 	it("fetches metadata from the last build", func() {
-		image := "some/image@sha256:07c5121b7bc36783614544bd4a7cd6618dc04b963d926cf6e318268cfead0530"
-
 		InTest{
 			Objects: []runtime.Object{
 				&v1alpha1.Image{
@@ -152,7 +150,7 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 					Status: v1alpha1.BuildStatus{
-						LatestImage: image,
+						LatestImage: imageVersion,
 					},
 				},
 				&v1alpha1.Build{
@@ -174,7 +172,7 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 					Status: v1alpha1.BuildStatus{
-						LatestImage: image,
+						LatestImage: imageVersion,
 					},
 				},
 			},
@@ -183,11 +181,11 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 				Namespace: namespace,
 			},
 			Version: oc.Version{
-				"image": image,
+				"image": imageVersion,
 			},
 			OutDir: outDir,
 			ExpectedVersion: oc.Version{
-				"image": image,
+				"image": imageVersion,
 			},
 			ExpectedMetadata: oc.Metadata{
 				{Name: "buildNumber", Value: "2"},
@@ -199,7 +197,7 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 		}.test(t)
 	})
 
-	it("writes an empty metadata if build no longer exisits", func() {
+	it("writes an empty metadata if build no longer exists", func() {
 		image := "some/image@sha256:07c5121b7bc36783614544bd4a7cd6618dc04b963d926cf6e318268cfead0530"
 
 		InTest{
@@ -219,6 +217,120 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 		}.test(t)
 
 		assertFileContents(t, filepath.Join(outDir, "image"), image)
+	})
+
+	it("fetches blob metadata", func() {
+		InTest{
+			Objects: []runtime.Object{
+				&v1alpha1.Image{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      imageName,
+						Namespace: namespace,
+					},
+				},
+				&v1alpha1.Build{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "build-name-1",
+						Namespace: namespace,
+						Labels: map[string]string{
+							v1alpha1.ImageLabel:       imageName,
+							v1alpha1.BuildNumberLabel: "1",
+						},
+						Annotations: map[string]string{
+							v1alpha1.BuildReasonAnnotation: "Build1Reason",
+						},
+						CreationTimestamp: v1.Time{Time: firstBuildTime},
+					},
+					Spec: v1alpha1.BuildSpec{
+						Source: v1alpha1.SourceConfig{
+							Blob: &v1alpha1.Blob{
+								URL: "https://some-blob-url.com",
+							},
+						},
+					},
+					Status: v1alpha1.BuildStatus{
+						LatestImage: imageVersion,
+					},
+				},
+			},
+			Source: resource.Source{
+				Image:     imageName,
+				Namespace: namespace,
+			},
+			Version: oc.Version{
+				"image": imageVersion,
+			},
+			OutDir: outDir,
+			ExpectedVersion: oc.Version{
+				"image": imageVersion,
+			},
+			ExpectedMetadata: oc.Metadata{
+				{Name: "buildNumber", Value: "1"},
+				{Name: "buildName", Value: "build-name-1"},
+				{Name: "buildReason", Value: "Build1Reason"},
+				{Name: "blobUrl", Value: "https://some-blob-url.com"},
+			},
+		}.test(t)
+
+		assertFileContents(t, filepath.Join(outDir, "image"), imageVersion)
+
+	})
+
+	it("fetches registry image metadata", func() {
+		InTest{
+			Objects: []runtime.Object{
+				&v1alpha1.Image{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      imageName,
+						Namespace: namespace,
+					},
+				},
+				&v1alpha1.Build{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "build-name-1",
+						Namespace: namespace,
+						Labels: map[string]string{
+							v1alpha1.ImageLabel:       imageName,
+							v1alpha1.BuildNumberLabel: "1",
+						},
+						Annotations: map[string]string{
+							v1alpha1.BuildReasonAnnotation: "Build1Reason",
+						},
+						CreationTimestamp: v1.Time{Time: firstBuildTime},
+					},
+					Spec: v1alpha1.BuildSpec{
+						Source: v1alpha1.SourceConfig{
+							Registry: &v1alpha1.Registry{
+								Image: "some-source-image@sha256:something",
+							},
+						},
+					},
+					Status: v1alpha1.BuildStatus{
+						LatestImage: imageVersion,
+					},
+				},
+			},
+			Source: resource.Source{
+				Image:     imageName,
+				Namespace: namespace,
+			},
+			Version: oc.Version{
+				"image": imageVersion,
+			},
+			OutDir: outDir,
+			ExpectedVersion: oc.Version{
+				"image": imageVersion,
+			},
+			ExpectedMetadata: oc.Metadata{
+				{Name: "buildNumber", Value: "1"},
+				{Name: "buildName", Value: "build-name-1"},
+				{Name: "buildReason", Value: "Build1Reason"},
+				{Name: "sourceImage", Value: "some-source-image@sha256:something"},
+			},
+		}.test(t)
+
+		assertFileContents(t, filepath.Join(outDir, "image"), imageVersion)
+
 	})
 }
 
