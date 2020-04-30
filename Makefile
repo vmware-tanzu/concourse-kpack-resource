@@ -1,4 +1,4 @@
-docker_registry = gcr.io/cf-build-service-public/concourse-kpack-resource
+docker_registry = gcr.io/cf-build-service-public/concourse-kpack-resource:dev
 
 docker:
 	docker build -t $(docker_registry) .
