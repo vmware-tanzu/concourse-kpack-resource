@@ -120,15 +120,19 @@ This will update the exisiting image with the provided source revision. It will 
 
 #### Parameters
 
-* `commitsh`: *Required string*
+* `commitsh`: *Optional string*
 
     Relative path to a file containing a git revision. 
     
     If you are using the [git resource](https://github.com/concourse/git-resource), this path will be: `source-code/.git/ref`
 
+* `blob_url_path`: *Optional string*
+
+    Relative path to a file containing a remote blob url. 
+
 # Sample Pipeline
 
-![sample pipelin](assets/screenshot.png)
+![sample pipeline](assets/screenshot.png)
 
 ```
 resource_types:
@@ -179,5 +183,5 @@ kpack will automatically rebuild images on stack and buildpack updates. The `dep
 
 * The kpack image must already exist to be used with this resource. 
 
-* Only git image sources are supported at this time. Please let us know if another source type would be useful. 
+* At this time you cannot push local source code. Please let us know if that would be helpful.  
 

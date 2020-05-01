@@ -25,12 +25,6 @@ type ImageWaiter interface {
 }
 
 func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment, log Logger) (oc.Version, oc.Metadata, error) {
-	fileContents, err := ioutil.ReadFile(filepath.Join(inDir, params.Commitish))
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "reading commitsh: %s", params.Commitish)
-	}
-	commit := strings.TrimSpace(string(fileContents))
-
 	image, err := o.Clientset.BuildV1alpha1().Images(src.Namespace).Get(src.Image, metav1.GetOptions{})
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return nil, nil, err
@@ -38,14 +32,11 @@ func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment
 		return nil, nil, errors.Errorf("image '%s' in namespace '%s' does not exist. Please create it first.", src.Image, src.Namespace)
 	}
 
-	if image.Spec.Source.Git == nil {
-		return nil, nil, errors.Errorf("image '%s' is not configured to use a git source", image.Name)
+	image, err = updateImage(image, inDir, params, log)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	log.Infof("Updating image '%s' in namespace '%s'.\nPrevious revision: %s\nNew revision: %s\n\n",
-		image.Name, image.Namespace, red(image.Spec.Source.Git.Revision), green(commit))
-
-	image.Spec.Source.Git.Revision = commit
 	image, err = o.Clientset.BuildV1alpha1().Images(src.Namespace).Update(image)
 	if err != nil {
 		return nil, nil, err
@@ -58,6 +49,48 @@ func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment
 	}
 
 	return oc.Version{"image": image.Status.LatestImage}, nil, nil
+}
+
+func updateImage(image *v1alpha1.Image, inDir string, params OutParams, log Logger) (*v1alpha1.Image, error) {
+	if params.BlobUrlFile == "" && params.Commitish == "" {
+		return nil, errors.Errorf("either commitsh or blob_url_file is required")
+	}
+
+	switch {
+	case params.Commitish != "":
+		fileContents, err := ioutil.ReadFile(filepath.Join(inDir, params.Commitish))
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading commitsh: %s", params.Commitish)
+		}
+		commit := strings.TrimSpace(string(fileContents))
+
+		if image.Spec.Source.Git == nil {
+			return nil, errors.Errorf("image '%s' is not configured to use a git source", image.Name)
+		}
+
+		log.Infof("Updating image '%s' in namespace '%s'.\nPrevious revision: %s\nNew revision: %s\n\n",
+			image.Name, image.Namespace, red(image.Spec.Source.Git.Revision), green(commit))
+
+		image.Spec.Source.Git.Revision = commit
+	case params.BlobUrlFile != "":
+		fileContents, err := ioutil.ReadFile(filepath.Join(inDir, params.BlobUrlFile))
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading blobUrl: %s", params.BlobUrlFile)
+		}
+		blobUrl := strings.TrimSpace(string(fileContents))
+
+		if image.Spec.Source.Blob == nil {
+			return nil, errors.Errorf("image '%s' is not configured to use a blob source", image.Name)
+		}
+
+		log.Infof("Updating image '%s' in namespace '%s'.\nPrevious blobUrl: %s\nNew blobUrl: %s\n\n",
+			image.Name, image.Namespace, red(image.Spec.Source.Blob.URL), green(blobUrl))
+
+		image.Spec.Source.Blob = &v1alpha1.Blob{
+			URL: blobUrl,
+		}
+	}
+	return image, nil
 }
 
 var (

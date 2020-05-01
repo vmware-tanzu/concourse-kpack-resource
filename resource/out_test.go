@@ -142,6 +142,124 @@ func testOut(t *testing.T, when spec.G, it spec.S) {
 
 		})
 	})
+
+	when("updating blob_url", func() {
+		const blobUrl = "https://new-blob-url.com"
+		const blobUrlPath = "some-blob-url-file"
+
+		var (
+			image = &v1alpha1.Image{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+				Spec: v1alpha1.ImageSpec{
+					Source: v1alpha1.SourceConfig{
+						Blob: &v1alpha1.Blob{
+							URL: "https://old-blob-url.com",
+						},
+					},
+				},
+			}
+		)
+
+		it.Before(func() {
+			err := ioutil.WriteFile(filepath.Join(inDir, blobUrlPath), []byte(blobUrl+"\n"), 0644)
+			require.NoError(t, err)
+		})
+
+		it("updates existing images with blobUrl", func() {
+			updatedImage := image.DeepCopy()
+			updatedImage.Spec.Source.Blob.URL = blobUrl
+
+			OutTest{
+				InDir: inDir,
+				Objects: []runtime.Object{
+					image,
+				},
+				Source: resource.Source{
+					Image:     image.Name,
+					Namespace: image.Namespace,
+				},
+				Parameters: resource.OutParams{
+					BlobUrlFile: blobUrlPath,
+				},
+				TerminalImage: &v1alpha1.Image{
+					ObjectMeta: updatedImage.ObjectMeta,
+					Spec:       updatedImage.Spec,
+					Status: v1alpha1.ImageStatus{
+						LatestBuildRef: "some-build-name",
+						LatestImage:    "some.reg.io/image@sha256:1234567",
+					},
+				},
+				ExpectedOutput: []string{
+					"Updating image 'test' in namespace 'test-namespace'",
+					"Previous blobUrl", "https://old-blob-url.com",
+					"New blobUrl:", "https://new-blob-url.com",
+					"Waiting on kpack to process update...\n",
+				},
+				ExpectUpdates: []clientgotesting.UpdateActionImpl{
+					{
+						Object: updatedImage,
+					},
+				},
+				ExpectedVersion: oc.Version{
+					"image": "some.reg.io/image@sha256:1234567",
+				},
+				ExpectedImageToWaitOn: updatedImage,
+			}.test(t)
+
+		})
+
+		it("returns error is image does not have a blob source", func() {
+			image.Spec.Source.Blob = nil
+			OutTest{
+				InDir: inDir,
+				Objects: []runtime.Object{
+					image,
+				},
+				Source: resource.Source{
+					Image:     image.Name,
+					Namespace: image.Namespace,
+				},
+				Parameters: resource.OutParams{
+					BlobUrlFile: blobUrlPath,
+				},
+				ExpectError: "image 'test' is not configured to use a blob source",
+			}.test(t)
+		})
+	})
+
+	it("returns error if no put parameter is set", func() {
+		image := &v1alpha1.Image{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "test",
+				Namespace: "test-namespace",
+			},
+			Spec: v1alpha1.ImageSpec{
+				Source: v1alpha1.SourceConfig{
+					Blob: &v1alpha1.Blob{
+						URL: "https://old-blob-url.com",
+					},
+				},
+			},
+		}
+		OutTest{
+			InDir: inDir,
+			Objects: []runtime.Object{
+				image,
+			},
+			Source: resource.Source{
+				Image:     image.Name,
+				Namespace: image.Namespace,
+			},
+			Parameters: resource.OutParams{
+				Commitish:   "",
+				BlobUrlFile: "",
+			},
+			ExpectError: "either commitsh or blob_url_file is required",
+		}.test(t)
+	})
 }
 
 type OutTest struct {

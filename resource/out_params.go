@@ -18,5 +18,6 @@ func NewOutParams(ocParams oc.Params) (OutParams, error) {
 }
 
 type OutParams struct {
-	Commitish string `json:"commitish"`
+	Commitish   string `json:"commitish,omitempty"`
+	BlobUrlFile string `json:"blob_url_file,omitempty"`
 }
