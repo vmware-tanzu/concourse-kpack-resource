@@ -1,6 +1,6 @@
 # Concourse kpack Resource 
 
-Use a [kpack](https://github.com/pivotal/kpack) image in a concourse pipeline natively in a concourse pipeline.
+Use a [kpack](https://github.com/pivotal/kpack) image in a concourse pipeline naturally.
 
 ## Installing
 
@@ -17,7 +17,7 @@ resource_types:
 
 ## Source configuration
 
-Each resource corresponds to a kpack image resource on an kubernetes cluster
+Each resource corresponds to a kpack image resource in an kubernetes cluster
 
 ```
 resources:
@@ -120,16 +120,15 @@ This will update the exisiting image with the provided source revision. It will 
 
 #### Parameters
 
-* `commitsh`: *Required string *
+* `commitsh`: *Required string*
 
     Relative path to a file containing a git revision. 
     
     If you are using the [git resource](https://github.com/concourse/git-resource), this path will be: `source-code/.git/ref`
 
-
 # Sample Pipeline
 
-![kpack gif](assets/screenshot.png)
+![sample pipelin](assets/screenshot.png)
 
 ```
 resource_types:
@@ -171,12 +170,14 @@ jobs:
     ...
 ```
 
-#### Why does the app-image not have passed constraint on unit test?
+#### Why does the app-image not have a passed constraint on unit tests?
 
 kpack will automatically rebuild images on stack and buildpack updates. The `deploy-dev` job will be triggered on all new built images. A passed constraint on `app-image` would exclude images that were not the direct result of a source update. 
 
 
 # Gotchas
 
-* The kpack image must already exist to be used with this resource.  
+* The kpack image must already exist to be used with this resource. 
+
+* Only git image sources are supported at this time. Please let us know if another source type would be useful. 
 
