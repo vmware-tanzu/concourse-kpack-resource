@@ -19,7 +19,7 @@ resource_types:
 
 Each resource corresponds to a kpack image resource in an kubernetes cluster
 
-```
+```yaml
 resources:
 - name: order-service-image
   type: kpack-image
@@ -41,7 +41,7 @@ resources:
 
 ### Connecting to a gke cluster
 
-```
+```yaml
 resources:
 - name: order-service-image
   type: kpack-image
@@ -65,7 +65,7 @@ resources:
 
 ### Connecting to a pks cluster
 
-```
+```yaml
 resources:
 - name: order-service-image
   type: kpack-image
@@ -134,7 +134,7 @@ This will update the exisiting image with the provided source revision. It will 
 
 ![sample pipeline](assets/screenshot.png)
 
-```
+```yaml
 resource_types:
 - name: kpack-image
   type: registry-image
