@@ -53,14 +53,14 @@ func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment
 
 func updateImage(image *v1alpha1.Image, inDir string, params OutParams, log Logger) (*v1alpha1.Image, error) {
 	if params.BlobUrlFile == "" && params.Commitish == "" {
-		return nil, errors.Errorf("either commitsh or blob_url_file is required")
+		return nil, errors.Errorf("either commitish or blob_url_file is required")
 	}
 
 	switch {
 	case params.Commitish != "":
 		fileContents, err := ioutil.ReadFile(filepath.Join(inDir, params.Commitish))
 		if err != nil {
-			return nil, errors.Wrapf(err, "reading commitsh: %s", params.Commitish)
+			return nil, errors.Wrapf(err, "reading commitish: %s", params.Commitish)
 		}
 		commit := strings.TrimSpace(string(fileContents))
 

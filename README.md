@@ -120,7 +120,7 @@ This will update the exisiting image with the provided source revision. It will 
 
 #### Parameters
 
-* `commitsh`: *Optional string*
+* `commitish`: *Optional string*
 
     Relative path to a file containing a git revision. 
     
