@@ -257,7 +257,7 @@ func testOut(t *testing.T, when spec.G, it spec.S) {
 				Commitish:   "",
 				BlobUrlFile: "",
 			},
-			ExpectError: "either commitsh or blob_url_file is required",
+			ExpectError: "either commitish or blob_url_file is required",
 		}.test(t)
 	})
 }
