@@ -162,6 +162,7 @@ jobs:
 - name: unit
   plan:
   - get: source-code
+    trigger: true
   - put: app-image
     params:
       commitish: source-code/.git/ref
