@@ -76,170 +76,211 @@ func waitTest(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		assert.Eventually(t, testWatcher.isStopped, time.Second, time.Millisecond)
-
-		assert.True(t, testWatcher.stopped)
 		assert.Eventually(t, fakeLogTailer.IsDone, time.Second, time.Millisecond)
-		assert.True(t, fakeLogTailer.done)
-		assert.Equal(t, []interface{}{os.Stderr, imageToWatch.Name, strconv.Itoa(nextBuild), imageToWatch.Namespace}, fakeLogTailer.args)
 
-		close(testWatcher.events)
-	})
-
-	it("returns on image ready and tails logs", func() {
-		readyImage := &v1alpha1.Image{
-			ObjectMeta: imageToWatch.ObjectMeta,
-			Status: v1alpha1.ImageStatus{
-				Status: corev1alpha1.Status{
-					Conditions: []corev1alpha1.Condition{
-						{
-							Type:   corev1alpha1.ConditionReady,
-							Status: corev1.ConditionTrue,
-						},
-					},
-				},
-			},
-		}
-
-		testWatcher.addEvent(watch.Event{
-			Type:   watch.Modified,
-			Object: readyImage,
-		})
-
-		image, err := imageWaiter.Wait(context.Background(), imageToWatch)
-		assert.NoError(t, err)
-		assert.Equal(t, readyImage, image)
-
-		assert.Eventually(t, fakeLogTailer.IsDone, time.Second, time.Millisecond)
-		assert.True(t, fakeLogTailer.done)
 		assert.Equal(t, []interface{}{os.Stderr, imageToWatch.Name, strconv.Itoa(nextBuild), imageToWatch.Namespace}, fakeLogTailer.args)
 	})
 
-	it("only returns when image generation matches observed generation", func() {
-		readyImage := &v1alpha1.Image{
-			ObjectMeta: imageToWatch.ObjectMeta,
-			Status: v1alpha1.ImageStatus{
-				Status: corev1alpha1.Status{
-					Conditions: []corev1alpha1.Condition{
-						{
-							Type:   corev1alpha1.ConditionReady,
-							Status: corev1.ConditionTrue,
+	when("an image is still being processing", func() {
+		it.After(func() {
+			assert.Eventually(t, testWatcher.isStopped, time.Second, time.Millisecond)
+			assert.True(t, testWatcher.stopped)
+			close(testWatcher.events)
+		})
+
+		it("returns on image ready and tails logs", func() {
+			readyImage := &v1alpha1.Image{
+				ObjectMeta: imageToWatch.ObjectMeta,
+				Status: v1alpha1.ImageStatus{
+					Status: corev1alpha1.Status{
+						Conditions: []corev1alpha1.Condition{
+							{
+								Type:   corev1alpha1.ConditionReady,
+								Status: corev1.ConditionTrue,
+							},
 						},
 					},
 				},
-			},
-		}
+			}
 
-		notMatchingGeneration := readyImage.DeepCopy()
-		notMatchingGeneration.Generation = 10
-		notMatchingGeneration.Status.ObservedGeneration = 9
+			testWatcher.addEvent(watch.Event{
+				Type:   watch.Modified,
+				Object: readyImage,
+			})
 
-		testWatcher.addEvent(watch.Event{
-			Type:   watch.Modified,
-			Object: notMatchingGeneration,
+			image, err := imageWaiter.Wait(context.Background(), imageToWatch)
+			assert.NoError(t, err)
+			assert.Equal(t, readyImage, image)
+
+			assert.Eventually(t, fakeLogTailer.IsDone, time.Second, time.Millisecond)
+			assert.True(t, fakeLogTailer.done)
+			assert.Equal(t, []interface{}{os.Stderr, imageToWatch.Name, strconv.Itoa(nextBuild), imageToWatch.Namespace}, fakeLogTailer.args)
 		})
 
-		matchingGeneration := readyImage.DeepCopy()
-		matchingGeneration.Generation = 10
-		matchingGeneration.Status.ObservedGeneration = 10
-
-		testWatcher.addEvent(watch.Event{
-			Type:   watch.Modified,
-			Object: matchingGeneration,
-		})
-
-		image, err := imageWaiter.Wait(context.Background(), imageToWatch)
-		assert.NoError(t, err)
-		assert.Equal(t, matchingGeneration, image)
-	})
-
-	it("returns an error if image is Ready False", func() {
-		readyImage := &v1alpha1.Image{
-			ObjectMeta: imageToWatch.ObjectMeta,
-			Status: v1alpha1.ImageStatus{
-				Status: corev1alpha1.Status{
-					Conditions: []corev1alpha1.Condition{
-						{
-							Type:   corev1alpha1.ConditionReady,
-							Status: corev1.ConditionFalse,
+		it("only returns when image generation matches observed generation", func() {
+			readyImage := &v1alpha1.Image{
+				ObjectMeta: imageToWatch.ObjectMeta,
+				Status: v1alpha1.ImageStatus{
+					Status: corev1alpha1.Status{
+						Conditions: []corev1alpha1.Condition{
+							{
+								Type:   corev1alpha1.ConditionReady,
+								Status: corev1.ConditionTrue,
+							},
 						},
 					},
 				},
-			},
-		}
+			}
 
-		testWatcher.addEvent(watch.Event{Type: watch.Modified, Object: readyImage})
+			notMatchingGeneration := readyImage.DeepCopy()
+			notMatchingGeneration.Generation = 10
+			notMatchingGeneration.Status.ObservedGeneration = 9
 
-		_, err := imageWaiter.Wait(context.Background(), imageToWatch)
-		assert.EqualError(t, err, "update to image some-name failed")
-	})
+			testWatcher.addEvent(watch.Event{
+				Type:   watch.Modified,
+				Object: notMatchingGeneration,
+			})
 
-	it("does not return an error if image is Ready False but has not observed generation", func() {
-		notReadyNotObservedImage := &v1alpha1.Image{
-			ObjectMeta: v1.ObjectMeta{
-				Name:       "some-name",
-				Namespace:  "some-namespace",
-				Generation: 10,
-			},
-			Status: v1alpha1.ImageStatus{
-				Status: corev1alpha1.Status{
-					ObservedGeneration: 9,
-					Conditions: []corev1alpha1.Condition{
-						{
-							Type:   corev1alpha1.ConditionReady,
-							Status: corev1.ConditionFalse,
+			matchingGeneration := readyImage.DeepCopy()
+			matchingGeneration.Generation = 10
+			matchingGeneration.Status.ObservedGeneration = 10
+
+			testWatcher.addEvent(watch.Event{
+				Type:   watch.Modified,
+				Object: matchingGeneration,
+			})
+
+			image, err := imageWaiter.Wait(context.Background(), imageToWatch)
+			assert.NoError(t, err)
+			assert.Equal(t, matchingGeneration, image)
+		})
+
+		it("returns an error if image is Ready False", func() {
+			readyImage := &v1alpha1.Image{
+				ObjectMeta: imageToWatch.ObjectMeta,
+				Status: v1alpha1.ImageStatus{
+					Status: corev1alpha1.Status{
+						Conditions: []corev1alpha1.Condition{
+							{
+								Type:   corev1alpha1.ConditionReady,
+								Status: corev1.ConditionFalse,
+							},
 						},
 					},
 				},
-			},
-		}
-		testWatcher.addEvent(watch.Event{
-			Type:   watch.Modified,
-			Object: notReadyNotObservedImage,
+			}
+
+			testWatcher.addEvent(watch.Event{Type: watch.Modified, Object: readyImage})
+
+			_, err := imageWaiter.Wait(context.Background(), imageToWatch)
+			assert.EqualError(t, err, "update to image some-name failed")
 		})
 
-		readyObservedImage := &v1alpha1.Image{
-			ObjectMeta: v1.ObjectMeta{
-				Name:       "some-name",
-				Namespace:  "some-namespace",
-				Generation: 10,
-			},
-			Status: v1alpha1.ImageStatus{
-				Status: corev1alpha1.Status{
-					ObservedGeneration: 10,
-					Conditions: []corev1alpha1.Condition{
-						{
-							Type:   corev1alpha1.ConditionReady,
-							Status: corev1.ConditionTrue,
+		it("does not return an error if image is Ready False but has not observed generation", func() {
+			notReadyNotObservedImage := &v1alpha1.Image{
+				ObjectMeta: v1.ObjectMeta{
+					Name:       "some-name",
+					Namespace:  "some-namespace",
+					Generation: 10,
+				},
+				Status: v1alpha1.ImageStatus{
+					Status: corev1alpha1.Status{
+						ObservedGeneration: 9,
+						Conditions: []corev1alpha1.Condition{
+							{
+								Type:   corev1alpha1.ConditionReady,
+								Status: corev1.ConditionFalse,
+							},
 						},
 					},
 				},
-			},
-		}
-		testWatcher.addEvent(watch.Event{
-			Type:   watch.Modified,
-			Object: readyObservedImage,
+			}
+			testWatcher.addEvent(watch.Event{
+				Type:   watch.Modified,
+				Object: notReadyNotObservedImage,
+			})
+
+			readyObservedImage := &v1alpha1.Image{
+				ObjectMeta: v1.ObjectMeta{
+					Name:       "some-name",
+					Namespace:  "some-namespace",
+					Generation: 10,
+				},
+				Status: v1alpha1.ImageStatus{
+					Status: corev1alpha1.Status{
+						ObservedGeneration: 10,
+						Conditions: []corev1alpha1.Condition{
+							{
+								Type:   corev1alpha1.ConditionReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			}
+			testWatcher.addEvent(watch.Event{
+				Type:   watch.Modified,
+				Object: readyObservedImage,
+			})
+
+			image, err := imageWaiter.Wait(context.Background(), imageToWatch)
+			assert.NoError(t, err)
+			assert.Equal(t, readyObservedImage, image)
 		})
 
-		image, err := imageWaiter.Wait(context.Background(), imageToWatch)
-		assert.NoError(t, err)
-		assert.Equal(t, readyObservedImage, image)
+		it("returns an error on watch error", func() {
+			testWatcher.events <- watch.Event{
+				Type:   watch.Modified,
+				Object: &apierrors.NewInternalError(errors.New("this will cause an error in retry watcher")).ErrStatus,
+			}
+
+			_, err := imageWaiter.Wait(context.Background(), imageToWatch)
+			require.Error(t, err, "expected error on watch")
+			assert.Contains(t, err.Error(), "error on watch")
+		})
 	})
 
-	it("returns an error on watch error", func() {
-		testWatcher.events <- watch.Event{
-			Type:   watch.Modified,
-			Object: &apierrors.NewInternalError(errors.New("this will cause an error in retry watcher")).ErrStatus,
-		}
+	when("there is no update for an image to process", func() {
+		it.After(func() {
+			assert.False(t, testWatcher.started)
+		})
 
-		_, err := imageWaiter.Wait(context.Background(), imageToWatch)
-		require.Error(t, err, "error on watch")
-		assert.Contains(t, err.Error(), "error on watch")
+		it("returns when the image is already ready", func() {
+			readyImage := imageToWatch.DeepCopy()
+			readyImage.Status.Conditions = []corev1alpha1.Condition{
+				{
+					Type:   corev1alpha1.ConditionReady,
+					Status: corev1.ConditionTrue,
+				},
+			}
+			readyImage.Status.ObservedGeneration = readyImage.Generation
+
+			image, err := imageWaiter.Wait(context.Background(), readyImage)
+			assert.NoError(t, err)
+			assert.Equal(t, readyImage, image)
+		})
+
+		it("returns an errorwhen the image is already not ready", func() {
+			readyImage := imageToWatch.DeepCopy()
+			readyImage.Status.Conditions = []corev1alpha1.Condition{
+				{
+					Type:   corev1alpha1.ConditionReady,
+					Status: corev1.ConditionFalse,
+				},
+			}
+			readyImage.Status.ObservedGeneration = readyImage.Generation
+
+			_, err := imageWaiter.Wait(context.Background(), readyImage)
+			assert.EqualError(t, err, "update to image some-name failed")
+		})
+
 	})
+
 }
 
 type TestWatcher struct {
 	stopped                bool
+	started                bool
 	events                 chan watch.Event
 	initialResourceVersion int
 }
@@ -256,12 +297,13 @@ func (t *TestWatcher) Stop() {
 	t.stopped = true
 }
 
-func (t TestWatcher) ResultChan() <-chan watch.Event {
+func (t *TestWatcher) ResultChan() <-chan watch.Event {
+	t.started = true
 	return t.events
 }
 
 func (t *TestWatcher) isStopped() bool {
-	return t.stopped
+	return t.stopped && t.started
 }
 
 type fakeLogTailer struct {

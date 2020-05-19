@@ -37,7 +37,7 @@ func (w *imageWaiter) Wait(ctx context.Context, image *v1alpha1.Image) (*v1alpha
 	go w.logTailer.Tail(ctx, os.Stderr, image.Name, strconv.Itoa(nextBuild), image.Namespace)
 
 	if done, _ := imageInTerminalState(watch.Event{Object: image}); done {
-		return image, nil
+		return resultOfWait(image)
 	}
 
 	event, err := watchTools.Until(ctx,
@@ -53,6 +53,10 @@ func (w *imageWaiter) Wait(ctx context.Context, image *v1alpha1.Image) (*v1alpha
 		return nil, errors.New("unexpected object received")
 	}
 
+	return resultOfWait(image)
+}
+
+func resultOfWait(image *v1alpha1.Image) (*v1alpha1.Image, error) {
 	if image.Status.GetCondition(corev1alpha1.ConditionReady).IsFalse() {
 		return nil, errors.Errorf("update to image %s failed", image.Name)
 	}
