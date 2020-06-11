@@ -3,7 +3,9 @@ package resource
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -21,7 +23,7 @@ type Out struct {
 }
 
 type ImageWaiter interface {
-	Wait(ctx context.Context, image *v1alpha1.Image) (*v1alpha1.Image, error)
+	Wait(ctx context.Context, writer io.Writer, image *v1alpha1.Image) (string, error)
 }
 
 func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment, log Logger) (oc.Version, oc.Metadata, error) {
@@ -43,12 +45,12 @@ func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment
 	}
 
 	log.Infof(purple("Waiting on kpack to process update...\n\n"))
-	image, err = o.ImageWaiter.Wait(context.Background(), image)
+	resultingImage, err := o.ImageWaiter.Wait(context.Background(), os.Stderr, image)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return oc.Version{"image": image.Status.LatestImage}, nil, nil
+	return oc.Version{"image": resultingImage}, nil, nil
 }
 
 func updateImage(image *v1alpha1.Image, inDir string, params OutParams, log Logger) (*v1alpha1.Image, error) {

@@ -2,6 +2,7 @@ package resource_test
 
 import (
 	"context"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,8 +12,8 @@ import (
 	"github.com/pivotal/kpack/pkg/apis/build/v1alpha1"
 	"github.com/pivotal/kpack/pkg/client/clientset/versioned/fake"
 	"github.com/sclevine/spec"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tj/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgotesting "k8s.io/client-go/testing"
@@ -80,14 +81,7 @@ func testOut(t *testing.T, when spec.G, it spec.S) {
 				Parameters: resource.OutParams{
 					Commitish: commitishPath,
 				},
-				TerminalImage: &v1alpha1.Image{
-					ObjectMeta: updatedImage.ObjectMeta,
-					Spec:       updatedImage.Spec,
-					Status: v1alpha1.ImageStatus{
-						LatestBuildRef: "some-build-name",
-						LatestImage:    "some.reg.io/image@sha256:1234567",
-					},
-				},
+				TerminalImage: "some.reg.io/image@sha256:1234567",
 				ExpectedOutput: []string{
 					"Updating image 'test' in namespace 'test-namespace'",
 					"Previous revision", "oldrevision",
@@ -184,14 +178,7 @@ func testOut(t *testing.T, when spec.G, it spec.S) {
 				Parameters: resource.OutParams{
 					BlobUrlFile: blobUrlPath,
 				},
-				TerminalImage: &v1alpha1.Image{
-					ObjectMeta: updatedImage.ObjectMeta,
-					Spec:       updatedImage.Spec,
-					Status: v1alpha1.ImageStatus{
-						LatestBuildRef: "some-build-name",
-						LatestImage:    "some.reg.io/image@sha256:1234567",
-					},
-				},
+				TerminalImage: "some.reg.io/image@sha256:1234567",
 				ExpectedOutput: []string{
 					"Updating image 'test' in namespace 'test-namespace'",
 					"Previous blobUrl", "https://old-blob-url.com",
@@ -267,7 +254,7 @@ type OutTest struct {
 	InDir         string
 	Source        resource.Source
 	Parameters    resource.OutParams
-	TerminalImage *v1alpha1.Image
+	TerminalImage string
 	TerminalError error
 
 	ExpectedOutput        []string
@@ -315,15 +302,15 @@ func (b OutTest) test(t *testing.T) {
 
 type TestImageWaiter struct {
 	waitedOnImage *v1alpha1.Image
-	terminalImage *v1alpha1.Image
+	terminalImage string
 	error         error
 }
 
-func (w *TestImageWaiter) Wait(ctx context.Context, image *v1alpha1.Image) (*v1alpha1.Image, error) {
+func (w *TestImageWaiter) Wait(ctx context.Context, writer io.Writer, image *v1alpha1.Image) (string, error) {
 	w.waitedOnImage = image
 
 	if w.error != nil {
-		return nil, w.error
+		return "", w.error
 	}
 
 	return w.terminalImage, nil
