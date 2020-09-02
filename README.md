@@ -13,7 +13,10 @@ resource_types:
   type: registry-image
   source:
     repository: gcr.io/cf-build-service-public/concourse-kpack-resource
+    tag: 1.0
 ```
+
+*Note:* If you are using an older kpack version use the `0.0.9` tag.  
 
 ## Source configuration
 
@@ -140,6 +143,7 @@ resource_types:
   type: registry-image
   source:
     repository: gcr.io/cf-build-service-public/concourse-kpack-resource
+    tag: 1.0
 
 resources:
 - name: source-code

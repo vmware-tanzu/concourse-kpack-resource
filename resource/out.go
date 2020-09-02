@@ -30,7 +30,7 @@ type ImageWaiter interface {
 }
 
 func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment, log Logger) (oc.Version, oc.Metadata, error) {
-	image, err := o.Clientset.BuildV1alpha1().Images(src.Namespace).Get(src.Image, metav1.GetOptions{})
+	image, err := o.Clientset.KpackV1alpha1().Images(src.Namespace).Get(src.Image, metav1.GetOptions{})
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return nil, nil, err
 	} else if k8serrors.IsNotFound(err) {
@@ -42,7 +42,7 @@ func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment
 		return nil, nil, err
 	}
 
-	image, err = o.Clientset.BuildV1alpha1().Images(src.Namespace).Update(image)
+	image, err = o.Clientset.KpackV1alpha1().Images(src.Namespace).Update(image)
 	if err != nil {
 		return nil, nil, err
 	}

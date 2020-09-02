@@ -15,7 +15,7 @@ import (
 )
 
 func Check(clientset versioned.Interface, source Source, version oc.Version, env oc.Environment, logger Logger) ([]oc.Version, error) {
-	buildList, err := clientset.BuildV1alpha1().Builds(source.Namespace).List(metav1.ListOptions{
+	buildList, err := clientset.KpackV1alpha1().Builds(source.Namespace).List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", v1alpha1.ImageLabel, source.Image),
 	})
 	if err != nil {

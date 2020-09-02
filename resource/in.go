@@ -25,7 +25,7 @@ func (in *In) In(outDir string, source Source, params oc.Params, version oc.Vers
 		return nil, nil, err
 	}
 
-	buildList, err := in.Clientset.BuildV1alpha1().Builds(source.Namespace).List(metav1.ListOptions{
+	buildList, err := in.Clientset.KpackV1alpha1().Builds(source.Namespace).List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", v1alpha1.ImageLabel, source.Image),
 	})
 	if err != nil {
