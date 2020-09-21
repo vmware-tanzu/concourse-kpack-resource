@@ -2,6 +2,10 @@
 
 Use a [kpack](https://github.com/pivotal/kpack) image in a concourse pipeline naturally.
 
+## Contributing
+
+Please read the [contributing](CONTRIBUTING.md) doc to begin contributing.
+
 ## Installing
 
 The recommended method to use this resource is with resource_types in the pipeline config as follows:
