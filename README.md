@@ -44,7 +44,20 @@ resources:
 * `namespace`: *Required string.*
 
   The namespace of the kpack image resource.
-  
+
+### Connecting to a cluster using a kubeconfig
+
+```yaml
+resources:
+- name: order-service-image
+  type: kpack-image
+  source:
+    image: "some-existing-image-name"
+    namespace: "some-namespace"
+    
+    kubeconfig: ((kubeconfig))
+```
+
 
 ### Connecting to a gke cluster
 
@@ -70,7 +83,7 @@ resources:
   The kubeconfig for the GKE cluster generated using the method [described here](https://ahmet.im/blog/authenticating-to-gke-without-gcloud/).
   
 
-### Connecting to a pks cluster
+### Connecting to a tkgi cluster
 
 ```yaml
 resources:
@@ -80,9 +93,9 @@ resources:
     image: "some-existing-image-name"
     namespace: "some-namespace"
     
-    pks:
-      api: https://api.pks.my-foundation.com
-      cluster: example.pks.cluster.com
+    tkgi:
+      api: https://api.tkgi.my-foundation.com
+      cluster: example.tkgi.cluster.com
       insecure: false
       username: ((username))
       password: ((password))
