@@ -5,6 +5,7 @@ package k8s
 
 import (
 	"encoding/json"
+
 	oc "github.com/cloudboss/ofcourse/ofcourse"
 )
 
@@ -20,8 +21,10 @@ func NewSource(ocSource oc.Source) (Source, error) {
 }
 
 type Source struct {
-	PKS *PKSSource `json:"pks,omitempty"`
-	GKE *GKESource `json:"gke,omitempty"`
+	PKS        *PKSSource `json:"pks,omitempty"`
+	TKGI       *PKSSource `json:"tkgi,omitempty"`
+	GKE        *GKESource `json:"gke,omitempty"`
+	Kubeconfig string     `json:"kubeconfig,omitempty"`
 }
 
 type PKSSource struct {

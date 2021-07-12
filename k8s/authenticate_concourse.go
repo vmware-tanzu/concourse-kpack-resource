@@ -5,6 +5,7 @@ package k8s
 
 import (
 	"errors"
+
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -30,8 +31,12 @@ func restConfig(source Source) (*rest.Config, error) {
 	switch {
 	case source.PKS != nil:
 		return pksSetup(source.PKS)
+	case source.TKGI != nil:
+		return pksSetup(source.TKGI)
 	case source.GKE != nil:
 		return gkeSetup(source.GKE)
+	case source.Kubeconfig != "":
+		return kubeConfigSetup(source.Kubeconfig)
 	default:
 		return nil, errors.New("no valid cluster config provided")
 	}
