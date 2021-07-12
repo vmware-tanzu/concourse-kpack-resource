@@ -4,13 +4,15 @@
 package resource
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
+
 	oc "github.com/cloudboss/ofcourse/ofcourse"
 	"github.com/pivotal/kpack/pkg/apis/build/v1alpha1"
 	"github.com/pivotal/kpack/pkg/client/clientset/versioned"
-	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"path/filepath"
 )
 
 const imageFile = "image"
@@ -25,7 +27,7 @@ func (in *In) In(outDir string, source Source, params oc.Params, version oc.Vers
 		return nil, nil, err
 	}
 
-	buildList, err := in.Clientset.KpackV1alpha1().Builds(source.Namespace).List(metav1.ListOptions{
+	buildList, err := in.Clientset.KpackV1alpha1().Builds(source.Namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", v1alpha1.ImageLabel, source.Image),
 	})
 	if err != nil {
