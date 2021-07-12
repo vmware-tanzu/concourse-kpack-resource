@@ -15,8 +15,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Check(clientset versioned.Interface, source Source, version oc.Version, env oc.Environment, logger Logger) ([]oc.Version, error) {
-	buildList, err := clientset.KpackV1alpha1().Builds(source.Namespace).List(context.TODO(), metav1.ListOptions{
+func Check(clientset versioned.Interface, source Source, version oc.Version, env oc.Environment, logger Logger, ctx context.Context) ([]oc.Version, error) {
+	buildList, err := clientset.KpackV1alpha1().Builds(source.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", v1alpha1.ImageLabel, source.Image),
 	})
 	if err != nil {

@@ -4,6 +4,7 @@
 package resource_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -294,7 +295,7 @@ func (b CheckTest) test(t *testing.T) {
 	client := fake.NewSimpleClientset(b.Objects...)
 
 	testLog := &testhelpers.Logger{}
-	versions, err := resource.Check(client, b.Source, b.Version, nil, testLog)
+	versions, err := resource.Check(client, b.Source, b.Version, nil, testLog, context.TODO())
 	require.NoError(t, err)
 
 	assert.Equal(t, b.ExpectedVersion, versions)

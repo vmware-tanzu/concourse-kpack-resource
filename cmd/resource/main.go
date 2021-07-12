@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -32,6 +33,8 @@ func main() {
 type concourseResource struct{}
 
 func (concourseResource) Check(ocSource ofcourse.Source, version ofcourse.Version, env ofcourse.Environment, logger *ofcourse.Logger) ([]ofcourse.Version, error) {
+	ctx := context.Background()
+
 	k8sSource, err := k8s.NewSource(ocSource)
 	if err != nil {
 		return nil, err
@@ -47,7 +50,7 @@ func (concourseResource) Check(ocSource ofcourse.Source, version ofcourse.Versio
 		return nil, err
 	}
 
-	return resource.Check(clientSet, source, version, env, logger)
+	return resource.Check(clientSet, source, version, env, logger, ctx)
 }
 
 func (concourseResource) In(outDir string, ocSource ofcourse.Source, params ofcourse.Params, version ofcourse.Version, env ofcourse.Environment, logger *ofcourse.Logger) (ofcourse.Version, ofcourse.Metadata, error) {
