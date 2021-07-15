@@ -4,6 +4,7 @@
 package resource_test
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -360,7 +361,7 @@ func (b InTest) test(t *testing.T) {
 		Clientset: client,
 	}
 
-	version, metadata, err := in.In(b.OutDir, b.Source, b.Parameters, b.Version, nil, testLog)
+	version, metadata, err := in.In(context.TODO(), b.OutDir, b.Source, b.Parameters, b.Version, nil, testLog)
 	if b.ExpectError == "" {
 		require.NoError(t, err)
 	} else {

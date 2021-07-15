@@ -295,7 +295,7 @@ func (b CheckTest) test(t *testing.T) {
 	client := fake.NewSimpleClientset(b.Objects...)
 
 	testLog := &testhelpers.Logger{}
-	versions, err := resource.Check(client, b.Source, b.Version, nil, testLog, context.TODO())
+	versions, err := resource.Check(context.TODO(), client, b.Source, b.Version, nil, testLog)
 	require.NoError(t, err)
 
 	assert.Equal(t, b.ExpectedVersion, versions)
