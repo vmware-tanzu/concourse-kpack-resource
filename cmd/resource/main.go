@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -32,6 +33,8 @@ func main() {
 type concourseResource struct{}
 
 func (concourseResource) Check(ocSource ofcourse.Source, version ofcourse.Version, env ofcourse.Environment, logger *ofcourse.Logger) ([]ofcourse.Version, error) {
+	ctx := context.Background()
+
 	k8sSource, err := k8s.NewSource(ocSource)
 	if err != nil {
 		return nil, err
@@ -47,10 +50,12 @@ func (concourseResource) Check(ocSource ofcourse.Source, version ofcourse.Versio
 		return nil, err
 	}
 
-	return resource.Check(clientSet, source, version, env, logger)
+	return resource.Check(ctx, clientSet, source, version, env, logger)
 }
 
 func (concourseResource) In(outDir string, ocSource ofcourse.Source, params ofcourse.Params, version ofcourse.Version, env ofcourse.Environment, logger *ofcourse.Logger) (ofcourse.Version, ofcourse.Metadata, error) {
+	ctx := context.Background()
+
 	k8sSource, err := k8s.NewSource(ocSource)
 	if err != nil {
 		return nil, nil, err
@@ -68,10 +73,12 @@ func (concourseResource) In(outDir string, ocSource ofcourse.Source, params ofco
 
 	return (&resource.In{
 		Clientset: clientSet,
-	}).In(outDir, source, params, version, env, logger)
+	}).In(ctx, outDir, source, params, version, env, logger)
 }
 
 func (concourseResource) Out(inDir string, ofcourseSource ofcourse.Source, params ofcourse.Params, env ofcourse.Environment, logger *ofcourse.Logger) (ofcourse.Version, ofcourse.Metadata, error) {
+	ctx := context.Background()
+
 	k8sSource, err := k8s.NewSource(ofcourseSource)
 	if err != nil {
 		return nil, nil, err
@@ -95,7 +102,7 @@ func (concourseResource) Out(inDir string, ofcourseSource ofcourse.Source, param
 	return (&resource.Out{
 		Clientset:   clientSet,
 		ImageWaiter: logs.NewImageWaiter(clientSet, logs.NewBuildLogsClient(k8sClient)),
-	}).Out(inDir, source, outParams, env, Logger{})
+	}).Out(ctx, inDir, source, outParams, env, Logger{})
 }
 
 type Logger struct {

@@ -29,8 +29,8 @@ type ImageWaiter interface {
 	Wait(ctx context.Context, writer io.Writer, image *v1alpha1.Image) (string, error)
 }
 
-func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment, log Logger) (oc.Version, oc.Metadata, error) {
-	image, err := o.Clientset.KpackV1alpha1().Images(src.Namespace).Get(src.Image, metav1.GetOptions{})
+func (o *Out) Out(ctx context.Context, inDir string, src Source, params OutParams, env oc.Environment, log Logger) (oc.Version, oc.Metadata, error) {
+	image, err := o.Clientset.KpackV1alpha1().Images(src.Namespace).Get(ctx, src.Image, metav1.GetOptions{})
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return nil, nil, err
 	} else if k8serrors.IsNotFound(err) {
@@ -42,7 +42,7 @@ func (o *Out) Out(inDir string, src Source, params OutParams, env oc.Environment
 		return nil, nil, err
 	}
 
-	image, err = o.Clientset.KpackV1alpha1().Images(src.Namespace).Update(image)
+	image, err = o.Clientset.KpackV1alpha1().Images(src.Namespace).Update(ctx, image, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, nil, err
 	}

@@ -4,13 +4,15 @@
 package resource
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
+
 	oc "github.com/cloudboss/ofcourse/ofcourse"
 	"github.com/pivotal/kpack/pkg/apis/build/v1alpha1"
 	"github.com/pivotal/kpack/pkg/client/clientset/versioned"
-	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"path/filepath"
 )
 
 const imageFile = "image"
@@ -19,13 +21,13 @@ type In struct {
 	Clientset versioned.Interface
 }
 
-func (in *In) In(outDir string, source Source, params oc.Params, version oc.Version, env oc.Environment, logger Logger) (oc.Version, oc.Metadata, error) {
+func (in *In) In(ctx context.Context, outDir string, source Source, params oc.Params, version oc.Version, env oc.Environment, logger Logger) (oc.Version, oc.Metadata, error) {
 	err := ioutil.WriteFile(filepath.Join(outDir, imageFile), []byte(version["image"]), 0644)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	buildList, err := in.Clientset.KpackV1alpha1().Builds(source.Namespace).List(metav1.ListOptions{
+	buildList, err := in.Clientset.KpackV1alpha1().Builds(source.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", v1alpha1.ImageLabel, source.Image),
 	})
 	if err != nil {

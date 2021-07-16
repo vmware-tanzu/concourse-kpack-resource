@@ -284,7 +284,7 @@ func (b OutTest) test(t *testing.T) {
 		ImageWaiter: waiter,
 	}
 
-	version, metadata, err := out.Out(b.InDir, b.Source, b.Parameters, nil, testLog)
+	version, metadata, err := out.Out(context.TODO(), b.InDir, b.Source, b.Parameters, nil, testLog)
 	if b.ExpectError == "" {
 		require.NoError(t, err)
 	} else {
