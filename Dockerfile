@@ -1,4 +1,5 @@
-FROM golang:1.14 as builder
+ARG GOLANG_IMG=golang:1.18
+FROM ${GOLANG_IMG} as builder
 
 COPY . /code
 
@@ -7,7 +8,7 @@ WORKDIR /code
 RUN unset GOPATH && \
     go install ./...
 
-FROM cloudfoundry/run:base
+FROM gcr.io/paketo-buildpacks/run-bionic-base:latest
 
 RUN mkdir -p /opt/resource
 
