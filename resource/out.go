@@ -14,6 +14,7 @@ import (
 
 	oc "github.com/cloudboss/ofcourse/ofcourse"
 	"github.com/pivotal/kpack/pkg/apis/build/v1alpha1"
+	corev1alpha1 "github.com/pivotal/kpack/pkg/apis/core/v1alpha1"
 	"github.com/pivotal/kpack/pkg/client/clientset/versioned"
 	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -91,7 +92,7 @@ func updateImage(image *v1alpha1.Image, inDir string, params OutParams, log Logg
 		log.Infof("Updating image '%s' in namespace '%s'.\nPrevious blobUrl: %s\nNew blobUrl: %s\n\n",
 			image.Name, image.Namespace, red(image.Spec.Source.Blob.URL), green(blobUrl))
 
-		image.Spec.Source.Blob = &v1alpha1.Blob{
+		image.Spec.Source.Blob = &corev1alpha1.Blob{
 			URL: blobUrl,
 		}
 	}

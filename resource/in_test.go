@@ -15,6 +15,7 @@ import (
 	"github.com/pivotal/concourse-kpack-resource/resource"
 	"github.com/pivotal/concourse-kpack-resource/resource/testhelpers"
 	"github.com/pivotal/kpack/pkg/apis/build/v1alpha1"
+	corev1alpha1 "github.com/pivotal/kpack/pkg/apis/core/v1alpha1"
 	"github.com/pivotal/kpack/pkg/client/clientset/versioned/fake"
 	"github.com/sclevine/spec"
 	"github.com/stretchr/testify/assert"
@@ -73,8 +74,8 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 						CreationTimestamp: v1.Time{Time: firstBuildTime},
 					},
 					Spec: v1alpha1.BuildSpec{
-						Source: v1alpha1.SourceConfig{
-							Git: &v1alpha1.Git{
+						Source: corev1alpha1.SourceConfig{
+							Git: &corev1alpha1.Git{
 								URL:      "gitUrl",
 								Revision: "gitRevision",
 							},
@@ -146,8 +147,8 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 						CreationTimestamp: v1.Time{Time: firstBuildTime.Add(time.Minute)},
 					},
 					Spec: v1alpha1.BuildSpec{
-						Source: v1alpha1.SourceConfig{
-							Git: &v1alpha1.Git{
+						Source: corev1alpha1.SourceConfig{
+							Git: &corev1alpha1.Git{
 								URL:      "gitUrl",
 								Revision: "gitRevision",
 							},
@@ -168,8 +169,8 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 						CreationTimestamp: v1.Time{Time: firstBuildTime},
 					},
 					Spec: v1alpha1.BuildSpec{
-						Source: v1alpha1.SourceConfig{
-							Git: &v1alpha1.Git{
+						Source: corev1alpha1.SourceConfig{
+							Git: &corev1alpha1.Git{
 								URL:      "gitUrl to ignore",
 								Revision: "gitRevision to ignore",
 							},
@@ -246,8 +247,8 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 						CreationTimestamp: v1.Time{Time: firstBuildTime},
 					},
 					Spec: v1alpha1.BuildSpec{
-						Source: v1alpha1.SourceConfig{
-							Blob: &v1alpha1.Blob{
+						Source: corev1alpha1.SourceConfig{
+							Blob: &corev1alpha1.Blob{
 								URL: "https://some-blob-url.com",
 							},
 						},
@@ -303,8 +304,8 @@ func testIn(t *testing.T, when spec.G, it spec.S) {
 						CreationTimestamp: v1.Time{Time: firstBuildTime},
 					},
 					Spec: v1alpha1.BuildSpec{
-						Source: v1alpha1.SourceConfig{
-							Registry: &v1alpha1.Registry{
+						Source: corev1alpha1.SourceConfig{
+							Registry: &corev1alpha1.Registry{
 								Image: "some-source-image@sha256:something",
 							},
 						},

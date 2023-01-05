@@ -13,6 +13,7 @@ import (
 
 	oc "github.com/cloudboss/ofcourse/ofcourse"
 	"github.com/pivotal/kpack/pkg/apis/build/v1alpha1"
+	corev1alpha1 "github.com/pivotal/kpack/pkg/apis/core/v1alpha1"
 	"github.com/pivotal/kpack/pkg/client/clientset/versioned/fake"
 	"github.com/sclevine/spec"
 	"github.com/stretchr/testify/assert"
@@ -53,8 +54,8 @@ func testOut(t *testing.T, when spec.G, it spec.S) {
 					Namespace: "test-namespace",
 				},
 				Spec: v1alpha1.ImageSpec{
-					Source: v1alpha1.SourceConfig{
-						Git: &v1alpha1.Git{
+					Source: corev1alpha1.SourceConfig{
+						Git: &corev1alpha1.Git{
 							URL:      "https://some.git.com",
 							Revision: "oldrevision",
 						},
@@ -151,8 +152,8 @@ func testOut(t *testing.T, when spec.G, it spec.S) {
 					Namespace: "test-namespace",
 				},
 				Spec: v1alpha1.ImageSpec{
-					Source: v1alpha1.SourceConfig{
-						Blob: &v1alpha1.Blob{
+					Source: corev1alpha1.SourceConfig{
+						Blob: &corev1alpha1.Blob{
 							URL: "https://old-blob-url.com",
 						},
 					},
@@ -227,8 +228,8 @@ func testOut(t *testing.T, when spec.G, it spec.S) {
 				Namespace: "test-namespace",
 			},
 			Spec: v1alpha1.ImageSpec{
-				Source: v1alpha1.SourceConfig{
-					Blob: &v1alpha1.Blob{
+				Source: corev1alpha1.SourceConfig{
+					Blob: &corev1alpha1.Blob{
 						URL: "https://old-blob-url.com",
 					},
 				},
