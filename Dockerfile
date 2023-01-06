@@ -20,4 +20,6 @@ RUN ln -s /opt/resource/resource /opt/resource/check \
     && ln -s /opt/resource/resource /opt/resource/in \
     && ln -s /opt/resource/resource /opt/resource/out
 
+RUN chown -R cnb /opt /tmp
+
 USER cnb
